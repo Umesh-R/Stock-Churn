@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% load static %}
+
+
+
+{% block head %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.4.0/dist/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js" integrity="sha512-UXumZrZNiOwnTcZSHLOfcTs0aos2MzBWHXOHOuB0J/R44QB0dwY5JgfbvljXcklVf65Gc4El6RjZ+lnwd2az2g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.1.0/chartjs-plugin-zoom.min.js" integrity="sha512-3e8Qp+1eECsPJGQnecRHymxL07q95A5zPcylJ7PHXl1E6wRwrm3bejznFJ8wHqRkp2q7foUqSDrpAGqt0/xuXg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+{% endblock head%}
+
+{% block content %}
+<div class="container" style="margin: 2rem;">
+    <div class="row" style="margin:3rem auto">
+        <div class="card" style="margin:auto;">
+            <div class="card-body">
+                <h3 class="card-title">Stocks Expected Returns</h3>
+                <div class="row">
+                    {% for i in stocks %}
+                        <div class="col-sm">
+                            <h5 class="card-text">{{i}}</h5>
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="row">
+                    {% for i in mean %}
+                        <div class="col-sm">
+                            <p class="card-text">{{i}}%</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-sm">
+            <div class="card" style="width: 80%; margin:auto">
+                <div class="card-body">
+                  <h3 class="card-title">Maximum Sharpe Ratio Portfolio</h3>
+                  <div class="card-text">
+                    <p>This is the Portfolio with Maximum Sharpe Ratio. (ie) this is the portfolio that gives maximum returns for the Risk/Volatility taken.</p>
+                    <p>Portfolio Returns : {{MSR.anual_returns}} %</p>
+                    <p>Portfolio Valoatility : {{MSR.anual_volatility}} %</p>
+                    <p>Sharpe Ratio : {{MSR.sharpe_ratio}} </p>
+                    <div>
+                        <h4>Portfolio Weights:</h4>
+                        {%for i,j in MSR.weights %}
+                            <p><b>{{i}}</b> : {{j}}%</p>
+                        {% endfor %}
+                    </div>
+                    <div>
+                        <h4>Portfolio Fund Distribution:</h4>
+                        {%for i,j in MSR.fund_allocation %}
+                            <p><b>{{i}}</b> : ₹{{j}}</p>
+                        {% endfor %}
+                    </div>
+                  </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm">
+            <div class="card" style="width: 80%; margin:auto">
+                <div class="card-body">
+                  <h3 class="card-title">Minimum Volatility Portfolio</h3>
+                  <div class="card-text">
+                    <p>This is the Portfolio with Minimum Volatility. (ie) this is the portfolio that has the least Volatility/Risk involved.</p>
+                    <p>Portfolio Returns : {{GMV.anual_returns}} %</p>
+                    <p>Portfolio Valoatility : {{GMV.anual_volatility}} %</p>
+                    <p>Sharpe Ratio : {{GMV.sharpe_ratio}} </p>
+                    <div>
+                        <h4>Portfolio Weights:</h4>
+                        {%for i,j in GMV.weights %}
+                            <p><b>{{i}}</b> : {{j}}%</p>
+                        {% endfor %}
+                    </div>
+                    <div>
+                        <h4>Portfolio Fund Distribution:</h4>
+                        {%for i,j in GMV.fund_allocation %}
+                            <p><b>{{i}}</b> : ₹{{j}}</p>
+                        {% endfor %}
+                     
+                    </div>
+                  </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="padding-top: 3rem;" class="row">
+        <h2 class="display-4" style="font-size: 2rem;text-decoration-line: underline; padding-bottom: 2rem;">Portfolio Volatility v Returns graph</h2>
+        <canvas id="EfficientFrontier">
+        </canvas>
+       
+    </div>
+    
+    <div class= "row" style="margin-bottom: 2rem;">
+        <div class="col-sm">
+            <h6>Press SHIFT + Mouse wheel to zoom</h6>  
+            <h6>Press SHIFT + Mouse drag to pan</h6>
+        </div>
+        <div class="col-sm" style="text-align:end;">
+            <button class="btn btn-primary" onclick="resetZoom()">Reset Zoom</button>
+        </div>
+    </div>
+
+    
+    
+    <div class="row" id="selectedPortfolio" style="display:none;margin-top:2rem;margin-bottom:2rem;">
+        <div class="card" style="width: 35%; margin:auto">
+            <div class="card-body">
+                <h3 class="card-title"> Selected Portfolio</h3>
+                <div class="card-text">
+                    <p>This is the Portfolio selected from the graph.</p>
+                    <p>Portfolio Returns : <span id="selectedPortfolioReturns"></span> %</p>
+                    <p>Portfolio Valoatility : <span id="selectedPortfolioVolatility"></span> %</p>
+                    <p>Sharpe Ratio : <span id="selectedPortfolioSharpe"></span> </p>
+                    <div>
+                        <h4>Portfolio Weights:</h4>
+                        <div id="selectedPortfolioWeights">
+                        </div>
+                    </div>
+                    <div>
+                        <h4>Portfolio Fund Distribution:</h4>
+                        <div id="selectedPortfolioFunds"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+
+
+
+<script>
+
+var data = JSON.parse('{{data}}'.replaceAll('&quot;','"'))
+
+var stocks = JSON.parse('{{stocks}}'.replaceAll('&#x27;','"'))
+
+ctx = document.getElementById('EfficientFrontier')
+ctx.getContext('2d');
+
+prt = document.getElementById('selectedPortfolio')
+prtReturns = document.getElementById('selectedPortfolioReturns')
+prtVolatility = document.getElementById('selectedPortfolioVolatility')
+prtSharpe = document.getElementById('selectedPortfolioSharpe')
+prtWeights = document.getElementById('selectedPortfolioWeights')
+prtFunds = document.getElementById('selectedPortfolioFunds')
+
+
+
+
+function getcolours(data) {
+    const bgc=[]
+    for(const i in data){
+        bgc.push('rgb('+(Math.floor(parseFloat(data[i]['Sharpe Ratio'])*100))+','+(Math.floor(parseFloat(data[i]['Sharpe Ratio'])*200))+',100)')
+      }
+    return bgc
+}
+
+var scatterChartData = {
+    datasets: [{
+        label: 'Portfolio Volatility V Return',
+        backgroundColor: getcolours(data),
+        data: data,
+        pointRadius: 3,
+        pointHoverRadius:  5,
+    }],
+};
+
+
+const config = {
+    type: 'scatter',
+    data: scatterChartData,
+    options: { 
+        scales: {
+          x: {
+            type: 'linear',
+            position: 'bottom'
+          },
+          y:{
+              type: 'linear',
+              position: 'left' 
+          }
+        },
+        legend: {
+            position: 'top',
+          },
+        title: {
+              display: true,
+              text: 'Portfolio Volatility V Return',
+              fontSize: 14,
+        },
+        tooltip :{
+            enabled: true,
+            mode:'point',
+            intersect:true,
+            callbacks: {
+                label: function(context) {
+                    var label = 'Volatility :';
+                    var label2 = 'Returns :';
+                    var label3 = 'Sharpe Ratio :'
+                    if (context.parsed.y !== null) {
+                        label2 += context.parsed.y +'%'
+                    }
+                    if (context.parsed.x !== null) {
+                        label += context.parsed.x +'%'
+                    }
+                    
+                    label3 += context.raw['Sharpe Ratio']
+
+                    return label+'  '+label2 +' '+label3;
+                }
+            }
+        },
+        events: ['click','mousemove'],
+        plugins: {
+            zoom: {
+                pan: {
+                    enabled: true,
+                    mode: "x",
+                    speed: 10,
+                    threshold: 10,
+                },
+                limits: {
+                  x:10,
+                  y:10
+                },
+                zoom: {
+                  wheel:{
+                      enabled:true,
+                      speed: 0.1,
+                      modifierKey:'shift'
+                  },
+                  mode: "xy"
+                }
+            }
+        }
+    }
+};
+
+var chart = new Chart(ctx,config);
+
+function resetZoom() {
+    chart.resetZoom();
+}
+
+ctx.addEventListener('click',(evt)=>{
+    var activePoints = chart.getElementsAtEventForMode(evt, 'point', { intersect: true }, true);
+    var atvPt=activePoints[0].element.$context.raw
+    console.log('Hello event! ', atvPt)
+
+    prt.style.display = 'block'
+    prtReturns.innerHTML = atvPt.y
+    prtVolatility.innerHTML = atvPt.x
+    prtSharpe.innerHTML = atvPt["Sharpe Ratio"]
+
+    var weightsHTML = ''
+    var fundsHTML = ''
+
+    for(let i=0;i< stocks.length ;i++){
+        if(atvPt["Weights"][i]!= 0){
+            weightsHTML+='<p><b>'+ stocks[i] +'</b> : '+ atvPt["Weights"][i]*100 +'%</p>';
+            fundsHTML+='<p><b>'+ stocks[i] +'</b> : ₹'+ atvPt["Fund Distribution"][i] +'</p>'; 
+        }
+    }
+
+    prtFunds.innerHTML=fundsHTML
+    prtWeights.innerHTML=weightsHTML
+
+    prt.scrollIntoView()
+})
+
+</script>
+{% endblock content %}

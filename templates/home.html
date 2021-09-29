@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="jumbotron">
+  <h1 class="display-4">Stock Churn Advisor</h1>
+  <p class="lead">Stock Churn Advisor is a webapp to help find out how an investor can distribute their funds in a stock portfolio with fixed funds to invest. This will help calculate the risk and returns of various possible portfolios and it gives the investor the portfolio with maximum returns for the risk taken, portfolio with the minimum risk and also allows the user to choose a portfolio based on their risk appetite.</p>
+  <hr class="my-4">
+</div>
+<form action="inputStocks" method="POST">
+    {% csrf_token %}
+    <div class="form-group">
+      <label for="numberOfStocks">Number of Stocks</label>
+      <input type="number" class="form-control" min="1" id="numberOfStocks" aria-describedby="noOfStocksHelp" name="numberOfStocks" required>
+      <small id="noOfStocksHelp" class="form-text text-muted">Enter the number of stocks in your portfolio</small>
+    </div> 
+    <div class="form-group"> 
+      <label for="funds">Available Funds</label>
+      <input type="number" class="form-control" min="1" id="fundsInput" aria-describedby="fundsHelp" name="funds" required>
+      <small id="fundsHelp" class="form-text text-muted">Enter the total fund you can invest. (in &#8377)</small>
+    </div>
+    <div class="form-group"> 
+        <label for="minInvestment">Min Investment</label>
+        <input type="number" class="form-control" min="1" value="5" id="minInvestmentInput" aria-describedby="minInvestmentHelp" name="minInvestment">
+        <small id="minInvestmentHelp" class="form-text text-muted">Enter the min percentage of fund that can be invested in a Stock. (in %)</small>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>  
+
+{% endblock %}
