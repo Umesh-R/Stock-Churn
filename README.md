@@ -8,7 +8,7 @@ The program fetches data from 1/1/2019 till date for the selected stocks, prepro
 The Django View and Model files are present in the folder Stock_Churn_Advisor and the Templates are in the template folder.
 
 # Requirements
-1. Django should be installed.
+1. Django 
 2. Numpy
 3. Pandas
 4. Matplotlib
